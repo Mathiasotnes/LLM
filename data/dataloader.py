@@ -16,11 +16,13 @@ class TokenizedDataset(Dataset):
         print(f"loaded {len(self.data):,} tokens from {self.data_path}")
 
     def __len__(self):
-        return len(self.data)
+        # Number of blocks
+        return (len(self.data) - 1) // self.block_size
 
     def __getitem__(self, idx):
-        x = torch.from_numpy(self.data[idx:idx+self.block_size].astype(np.int64))
-        y = torch.from_numpy(self.data[idx+1:idx+1+self.block_size].astype(np.int64))
+        start_idx = idx * self.block_size
+        x = torch.from_numpy(self.data[start_idx:start_idx + self.block_size].astype(np.int64))
+        y = torch.from_numpy(self.data[start_idx + 1:start_idx + 1 + self.block_size].astype(np.int64))
         return x, y
 
 def get_tokenized_dataloader(data_dir, split, block_size, batch_size, shuffle=False):
