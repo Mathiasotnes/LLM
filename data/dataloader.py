@@ -1,27 +1,29 @@
-# data/dataloader.py
+"""
+data/dataloader.py
+Dataloader for tokenized dataset
+"""
 
-from torch.utils.data import Dataset, DataLoader
+import os
+import numpy as np
 import torch
-import tiktoken
+from torch.utils.data import Dataset, DataLoader
 
-class TextDataset(Dataset):
-    def __init__(self, file_path, max_length=128):
-        with open(file_path, 'r') as f:
-            self.texts = f.readlines()
-        self.tokenizer = tiktoken.Encoding('gpt2')
-        self.max_length = max_length
+class TokenizedDataset(Dataset):
+    def __init__(self, data_dir, split, block_size):
+        self.block_size = block_size
+        self.data_path = os.path.join(data_dir, f'{split}.bin')
+        self.data = np.fromfile(self.data_path, dtype=np.uint16)
+        print(f"loaded {len(self.data):,} tokens from {self.data_path}")
 
     def __len__(self):
-        return len(self.texts)
+        return len(self.data)
 
     def __getitem__(self, idx):
-        text = self.texts[idx]
-        tokens = self.tokenizer.encode(text)
-        tokens = tokens[:self.max_length]
-        if len(tokens) < self.max_length:
-            tokens = tokens + [self.tokenizer.pad_token_id] * (self.max_length - len(tokens))
-        return torch.tensor(tokens)
+        x = torch.from_numpy(self.data[idx:idx+self.block_size].astype(np.int64))
+        y = torch.from_numpy(self.data[idx+1:idx+1+self.block_size].astype(np.int64))
+        return x, y
 
-def get_dataloader(file_path, max_length=128, batch_size=32, shuffle=True):
-    dataset = TextDataset(file_path, max_length)
-    return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+def get_tokenized_dataloader(data_dir, split, block_size, batch_size, shuffle=False):
+    dataset = TokenizedDataset(data_dir, split, block_size)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+    return dataloader
